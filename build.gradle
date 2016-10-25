@@ -14,8 +14,9 @@ buildscript {
 
 apply plugin: 'java'
 apply plugin: 'kotlin'
+apply plugin: 'application'
 
-sourceCompatibility = 1.5
+mainClassName = "org.romeo.googledrive.DriveQuickStartKt"
 
 repositories {
     mavenCentral()
