@@ -1,3 +1,5 @@
 .gradle/
 .idea/
 build/
+credentials/
+src/main/resources/client_id.json

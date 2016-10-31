@@ -27,41 +27,27 @@ import java.util.*
 
 class DriveQuickstart {
     /** Application name. */
-    private val APPLICATION_NAME =
-    "Drive API Java Quickstart"
+    private val APPLICATION_NAME = "Google Drive ChangeWatcher"
 
     /** Directory to store user credentials for this application.  */
-    private val DATA_STORE_DIR = java.io.File(
-            System.getProperty("user.home"), ".credentials/drive-java-quickstart")
-
+    private val DATA_STORE_DIR = java.io.File("./credentials/drive-java-quickstart")
 
     /** Global instance of the {@link FileDataStoreFactory}. */
-    private var DATA_STORE_FACTORY: FileDataStoreFactory? = null
+    private var DATA_STORE_FACTORY: FileDataStoreFactory = FileDataStoreFactory(DATA_STORE_DIR)
 
     /** Global instance of the JSON factory. */
     private val JSON_FACTORY: JsonFactory =
-    JacksonFactory.getDefaultInstance()
+            JacksonFactory.getDefaultInstance()
 
     /** Global instance of the HTTP transport. */
-    private var HTTP_TRANSPORT: HttpTransport? = null
+    private var HTTP_TRANSPORT: HttpTransport = GoogleNetHttpTransport.newTrustedTransport()
 
     /** Global instance of the scopes required by this quickstart.
      *
      * If modifying these scopes, delete your previously saved credentials
      * at ~/.credentials/drive-java-quickstart
      */
-    private val SCOPES =
-    Arrays.asList(DriveScopes.DRIVE_METADATA_READONLY)
-
-    init {
-        try {
-            HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport()
-            DATA_STORE_FACTORY = FileDataStoreFactory(DATA_STORE_DIR)
-        } catch (t: Throwable) {
-            t.printStackTrace()
-            System.exit(1)
-        }
-    }
+    private val SCOPES = Arrays.asList(DriveScopes.DRIVE_METADATA_READONLY)
 
     /**
      * Creates an authorized Credential object.
@@ -77,13 +63,13 @@ class DriveQuickstart {
         // Build flow and trigger user authorization request.
         val flow = GoogleAuthorizationCodeFlow.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-        .setDataStoreFactory(DATA_STORE_FACTORY)
+                .setDataStoreFactory(DATA_STORE_FACTORY)
                 .setAccessType("offline")
                 .build()
         val credential: Credential = AuthorizationCodeInstalledApp(
                 flow, LocalServerReceiver()).authorize("user")
         System.out.println(
-                "Credentials saved to " + DATA_STORE_DIR.getAbsolutePath());
+                "Credentials saved to " + DATA_STORE_DIR.absolutePath)
         return credential
     }
 
@@ -97,31 +83,35 @@ class DriveQuickstart {
         val credential: Credential = authorize()
         return Drive.Builder(
                 HTTP_TRANSPORT, JSON_FACTORY, credential)
-        .setApplicationName(APPLICATION_NAME)
+                .setApplicationName(APPLICATION_NAME)
                 .build()
     }
 
 }
 
-fun main(args : Array<String>) {
+fun main(args: Array<String>) {
 
     val driveQuickStart = DriveQuickstart()
 
     // Build a new authorized API client service.
     val service: Drive = driveQuickStart.getDriveService()
 
-    // Print the names and IDs for up to 10 files.
-    val result: FileList = service.files().list()
-            .setPageSize(10)
-            .setFields("nextPageToken, files(id, name)")
-            .execute()
-    val files = result.files
-    if (files == null || files.size == 0) {
-        System.out.println("No files found.")
+    val folderName = "Mentor goals"
+
+
+    val folderId = service.files().list().setQ("name = \"$folderName\"").execute().files.firstOrNull()?.id
+    if(folderId == null) {
+        println("folder: $folderName not found")
     } else {
-        System.out.println("Files:")
-        for (file in files) {
-            System.out.printf("%s (%s)\n", file.name, file.id)
+        val result = service.files().list().setQ("\"$folderId\" in parents").setPageSize(20).setFields("files(name, modifiedTime)").execute()
+        val files = result.files
+        if (files == null || files.size == 0) {
+            System.out.println("No files found.")
+        } else {
+            System.out.println("Files:")
+            for (file in files) {
+                System.out.printf("%s (%s)\n", file.name, file.modifiedTime)
+            }
         }
     }
 }
